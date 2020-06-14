@@ -35,7 +35,7 @@
     * Divide and Conquer: Break into non-overlapping problems, solve sub problems and combine results.
 
 * GCD of 2 numbers : Find reminder, find gcd of small number and reminder recursively till reminder is zero!
-* Linear Search: Worst case: O(n), Binary Search: O(log(n))
+* Linear Search: Worst case: O(n), Binary Search: O(log(n)), Merge sort: O(nlog(n)), Count Sort: O(n + m), Quick Sort (Comparison based): O(nlog(n)) (Worst case : O(n**2))
 
 
 
