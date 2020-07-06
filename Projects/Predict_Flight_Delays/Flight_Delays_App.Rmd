@@ -26,26 +26,16 @@ library(shiny)
 library(tidyverse)
 library(tidyquant)
 library(curl)
-# install.packages("geosphere", repos="http://R-Forge.R-project.org")
 
+# File containing helper functions
 source("functions.R")
 
-# 
-# setwd("~/Desktop/Samarth/Hopkins/Hopkins-Classwork/Data_Science/Project/flight-delays")
-
+# Read in data
 cancelled_flights <- read.csv("cancelled_flights.csv")
 airports_data <- read.csv("airports_data_fixed.csv")
 train_data <- read.csv("train_data_reduced.csv")
 airline_share <- read.csv("airline_share.csv")
 busiest_airpots <- read.csv("busiest_airpots.csv")
-
-# airline_share <- read.csv(curl("https://raw.githubusercontent.com/apatel3112/Flight-Delays/master/airline_share.csv"))
-# airports_data <- read.csv(curl("https://raw.githubusercontent.com/apatel3112/Flight-Delays/master/airports_data_fixed.csv"))
-# busiest_airpots <- read.csv(curl("https://raw.githubusercontent.com/apatel3112/Flight-Delays/master/busiest_airpots.csv"))
-# cancelled_flights <- read.csv(curl("https://raw.githubusercontent.com/apatel3112/Flight-Delays/master/cancelled_flights.csv"))
-# train_data <- read.csv(curl("https://raw.githubusercontent.com/apatel3112/Flight-Delays/master/train_data_reduced.csv"))
-
-
 
 
 
@@ -53,12 +43,8 @@ busiest_airpots <- read.csv("busiest_airpots.csv")
 cols <- c("delayed", "MONTH","DAY", "AIRLINE", "DAY_OF_WEEK")
 train_data[cols] <- lapply(train_data[cols], factor)
 
-# all_flights_data <- read.csv("merged_flights.csv")
+# Format for Shiny App layout
 ```
-
-
-
-
 Overview {orientation=rows}
 ===================================== 
 
@@ -66,8 +52,6 @@ Column {data-height=650}
 -----------------------------------------------------------------------
     
 ### **Visualize US Flights originating from JFK in 2015**
-
-<!-- The below plot visualizes all flights from JFK to all other destinations! -->
     
 ```{r}
 
@@ -75,19 +59,21 @@ Column {data-height=650}
 # airports_data$LATITUDE
 usairports <- dplyr::filter(airports_data, LATITUDE < 48.5)
 usairports <- dplyr::filter(usairports, LONGITUDE > -130)
-usairports <- dplyr::filter(airports_data, IATA_CODE!="JFK") #filter out jfk
-jfk <- dplyr::filter(airports_data, IATA_CODE=="JFK") #separate df for jfk
+# Filter out jfk
+usairports <- dplyr::filter(airports_data, IATA_CODE!="JFK") 
+# Separate df for jfk
+jfk <- dplyr::filter(airports_data, IATA_CODE=="JFK") 
 
-#create basemap
+# Create basemap
 map("world", regions=c("usa"), fill=T, col="grey8", bg="grey15", ylim=c(24.0,50.35), xlim=c(-127.44,-65.30))
-#overlay airports
+
+# Overlay airports
 points(usairports$LONGITUDE,usairports$LATITUDE, pch=3, cex=0.1, col="chocolate1")
 
 for (i in (1:dim(usairports)[1])) {
 inter <- gcIntermediate(c(jfk$LONGITUDE[1], jfk$LATITUDE[1]), c(usairports$LONGITUDE[i], usairports$LATITUDE[i]), n=200)
 lines(inter, lwd=0.1, col="turquoise2")
 }
-
 
 ```
     
@@ -97,7 +83,7 @@ Column {data-height=350}
 ### **Top 10 Busiest Airports** 
 
 ```{r}
-
+# Create bar-plot of top 10 busiest airports
 fig <- plot_ly(busiest_airpots, x = ~Origin_City, y = ~Number_of_flights, type = 'bar')
 fig <- fig %>% layout(title = "Busiest Airports by Origin",
          xaxis = list(title = "Origin City", tickangle = 45, size = 5),
@@ -112,11 +98,7 @@ fig
 ### **Airlines Market Share**
 
 ```{r}
-# fig <- plot_ly(airline_share, x = ~Airline, y = ~Number_Of_Flights, type = 'bar')
-# fig <- fig %>% layout(title = "Airline Market Share",
-#          xaxis = list(title = "", tickangle = 45, size = 5),
-#          yaxis = list(title = ""))
-
+# Create pie chart of airlines market share
 fig <- plot_ly(airline_share, labels = ~Airline, values = ~Number_Of_Flights, type ='pie', insidetextorientation='radial') 
 
 fig <- fig %>% layout(showlegend = TRUE, legend = list(font = list(x = 0.1, y = 0.9)))
@@ -135,16 +117,19 @@ Row {data-height=350}
 ### **Analyse Cancelled Flights**
 
 ```{r}
+# Create dataframe of cancelltion reasons
 cancel_reason <- data.frame(table(cancelled_flights$CANCELLATION_REASON))
 
 colnames(cancel_reason) <- c("Reason_for_Cancellation", "Count")
 
+# Rename cancelled reasons from data
 levels(cancel_reason$Reason_for_Cancellation) <- c(levels(cancel_reason$Reason_for_Cancellation), "Airline/Carrier",'Weather', 'National Air System','Security' )
 cancel_reason$Reason_for_Cancellation[cancel_reason$Reason_for_Cancellation == 'A'] <- 'Airline/Carrier' 
 cancel_reason$Reason_for_Cancellation[cancel_reason$Reason_for_Cancellation == 'B'] <- 'Weather' 
 cancel_reason$Reason_for_Cancellation[cancel_reason$Reason_for_Cancellation == 'C'] <- 'National Air System'
 cancel_reason$Reason_for_Cancellation[cancel_reason$Reason_for_Cancellation == 'D'] <- 'Security'
 
+# Create bar-plot of cancellation reasons for flights
 fig <- plot_ly(cancel_reason, x = ~Reason_for_Cancellation, y = ~Count, type = 'bar')
 fig <- fig %>% layout(title = "Reasons for Calcellation of flights",
          xaxis = list(title = "", tickangle = 45, size = 1),
@@ -173,21 +158,15 @@ cancelled_flights_pie = 89884
 delayed_flights_pie = 1063439
 on_time_flights_pie = 4665756
 
+# Create dataframe of flight status
 name1 <- c('delayed_flights','on_time_flights', 'cancelled_flights')
 name2 = c(delayed_flights_pie,on_time_flights_pie, cancelled_flights_pie )
 
+#  Rename dataframe for plotting
 split_data <- data.frame(name1,name2)
 colnames(split_data) <- c("Category", "Numbers")
 
-# write.csv(split_data, "split_data.csv")
-# del split_data
-
-# fig <- plot_ly( x = name1, y = name2, type = 'bar')
-# fig <- fig %>% layout(title = "Reasons for Calcellation of flights",
-#          xaxis = list(title = "", tickangle = 45, size = 1),
-#          yaxis = list(title = "Count"))
-
-
+# Create pie chart of flight status
 fig <- plot_ly(split_data, labels = ~Category, values = ~Numbers, type ='pie', insidetextorientation='radial')%>% layout(showlegend = TRUE, legend = list(font = list(size = 12)))
 fig
 
@@ -198,11 +177,13 @@ fig
 ### **Which airlines cancel their flights the most?**
 
 ```{r}
+# Create dataframe of cancelled flight counts
 airline_cancel <-data.frame(table(cancelled_flights$AIRLINE))
 colnames(airline_cancel) <- c("Airline", "Count")
 
 airline_cancel$cancel_rate <- (airline_cancel$Count/airline_share$Number_Of_Flights)*100
 
+# Create bar plot of cancelled flight rates
 fig <- plot_ly(airline_cancel, x = ~Airline, y = ~cancel_rate, type = 'bar')
 fig <- fig %>% layout(title = "Airline Cancellation Rates",
          xaxis = list(title = "", tickangle = 45, size = 1),
@@ -230,6 +211,7 @@ Row {data-heght=650}
 ```{r}
 h6("")
 dropdown(
+    # Style dropdown menu
     style = "pill", 
     size = "md",
     tooltip = tooltipOptions(title = "Select One of Each"),
@@ -241,7 +223,7 @@ dropdown(
       enter = animations$fading_entrances$fadeInLeftBig,
       exit = animations$fading_exits$fadeOutLeftBig),
     
-       # Picker Input Widget: Experience
+    # Picker Input Widget: Experience
     shinyWidgets::pickerInput(
       inputId  = "picker_Airline",
       label    = h5(strong("Airline")),
@@ -253,7 +235,7 @@ dropdown(
     
     hr(),
     
-     # Picker Input Widget: Brand
+    # Picker Input Widget: Brand
     shinyWidgets::pickerInput(
       inputId  = "picker_month",
       label    = h5(strong("Month")),
@@ -308,6 +290,7 @@ Row {data-height=650}
 ---------------------------------------------------------------------
 
 ```{r}
+# Reactive function to get user input
 new_flight_tbl <- eventReactive(eventExpr = input$apply, valueExpr = {
     generate_new_data(
         Airline = input$picker_Airline,
@@ -350,9 +333,11 @@ We know you want to see the predictions! But, the length of the predictions are 
 
 ```{r}
 
+# Read in trained model
 model_reg <- read_rds("log_reg_new.rds")
 model_dt <- read_rds("dt_model.rds")
 
+# Run model and return accuracy to user's query
 output$accuracy <- eventReactive(eventExpr = input$apply, valueExpr = {
   if(input$picker_model == "Logistic_Regression"){
 
