@@ -1,0 +1,398 @@
+---
+title: "Predicting Flight Delays and Cancellations"
+output: 
+  flexdashboard::flex_dashboard:
+    theme: united
+    css: styles.css
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(plotly)
+library(flexdashboard)
+library(plotly)
+library(ggplot2)
+library(dplyr)
+library(plotly)
+library(stringr)
+library(leaflet)
+library(tidyverse)
+library(maps)
+library(geosphere)
+library(shinyWidgets)
+library(shiny)
+# install.packages("tidyquant")
+library(tidyverse)
+library(tidyquant)
+library(curl)
+# install.packages("geosphere", repos="http://R-Forge.R-project.org")
+
+source("functions.R")
+
+# 
+# setwd("~/Desktop/Samarth/Hopkins/Hopkins-Classwork/Data_Science/Project/flight-delays")
+
+cancelled_flights <- read.csv("cancelled_flights.csv")
+airports_data <- read.csv("airports_data_fixed.csv")
+train_data <- read.csv("train_data_reduced.csv")
+airline_share <- read.csv("airline_share.csv")
+busiest_airpots <- read.csv("busiest_airpots.csv")
+
+# airline_share <- read.csv(curl("https://raw.githubusercontent.com/apatel3112/Flight-Delays/master/airline_share.csv"))
+# airports_data <- read.csv(curl("https://raw.githubusercontent.com/apatel3112/Flight-Delays/master/airports_data_fixed.csv"))
+# busiest_airpots <- read.csv(curl("https://raw.githubusercontent.com/apatel3112/Flight-Delays/master/busiest_airpots.csv"))
+# cancelled_flights <- read.csv(curl("https://raw.githubusercontent.com/apatel3112/Flight-Delays/master/cancelled_flights.csv"))
+# train_data <- read.csv(curl("https://raw.githubusercontent.com/apatel3112/Flight-Delays/master/train_data_reduced.csv"))
+
+
+
+
+
+# Fix data types for predictions from model
+cols <- c("delayed", "MONTH","DAY", "AIRLINE", "DAY_OF_WEEK")
+train_data[cols] <- lapply(train_data[cols], factor)
+
+# all_flights_data <- read.csv("merged_flights.csv")
+```
+
+
+
+
+Overview {orientation=rows}
+===================================== 
+
+Column {data-height=650}
+-----------------------------------------------------------------------
+    
+### **Visualize US Flights originating from JFK in 2015**
+
+<!-- The below plot visualizes all flights from JFK to all other destinations! -->
+    
+```{r}
+
+
+# airports_data$LATITUDE
+usairports <- dplyr::filter(airports_data, LATITUDE < 48.5)
+usairports <- dplyr::filter(usairports, LONGITUDE > -130)
+usairports <- dplyr::filter(airports_data, IATA_CODE!="JFK") #filter out jfk
+jfk <- dplyr::filter(airports_data, IATA_CODE=="JFK") #separate df for jfk
+
+#create basemap
+map("world", regions=c("usa"), fill=T, col="grey8", bg="grey15", ylim=c(24.0,50.35), xlim=c(-127.44,-65.30))
+#overlay airports
+points(usairports$LONGITUDE,usairports$LATITUDE, pch=3, cex=0.1, col="chocolate1")
+
+for (i in (1:dim(usairports)[1])) {
+inter <- gcIntermediate(c(jfk$LONGITUDE[1], jfk$LATITUDE[1]), c(usairports$LONGITUDE[i], usairports$LATITUDE[i]), n=200)
+lines(inter, lwd=0.1, col="turquoise2")
+}
+
+
+```
+    
+Column {data-height=350}
+-----------------------------------------------------------------------
+
+### **Top 10 Busiest Airports** 
+
+```{r}
+
+fig <- plot_ly(busiest_airpots, x = ~Origin_City, y = ~Number_of_flights, type = 'bar')
+fig <- fig %>% layout(title = "Busiest Airports by Origin",
+         xaxis = list(title = "Origin City", tickangle = 45, size = 5),
+         yaxis = list(title = "Number of flights"))
+
+fig
+
+
+```
+   
+
+### **Airlines Market Share**
+
+```{r}
+# fig <- plot_ly(airline_share, x = ~Airline, y = ~Number_Of_Flights, type = 'bar')
+# fig <- fig %>% layout(title = "Airline Market Share",
+#          xaxis = list(title = "", tickangle = 45, size = 5),
+#          yaxis = list(title = ""))
+
+fig <- plot_ly(airline_share, labels = ~Airline, values = ~Number_Of_Flights, type ='pie', insidetextorientation='radial') 
+
+fig <- fig %>% layout(showlegend = TRUE, legend = list(font = list(x = 0.1, y = 0.9)))
+
+fig
+
+```
+   
+
+Flights Data Analysis {orientation=rows}
+=====================================  
+
+
+Row {data-height=350}
+-----------------------------------------------------------------------
+### **Analyse Cancelled Flights**
+
+```{r}
+cancel_reason <- data.frame(table(cancelled_flights$CANCELLATION_REASON))
+
+colnames(cancel_reason) <- c("Reason_for_Cancellation", "Count")
+
+levels(cancel_reason$Reason_for_Cancellation) <- c(levels(cancel_reason$Reason_for_Cancellation), "Airline/Carrier",'Weather', 'National Air System','Security' )
+cancel_reason$Reason_for_Cancellation[cancel_reason$Reason_for_Cancellation == 'A'] <- 'Airline/Carrier' 
+cancel_reason$Reason_for_Cancellation[cancel_reason$Reason_for_Cancellation == 'B'] <- 'Weather' 
+cancel_reason$Reason_for_Cancellation[cancel_reason$Reason_for_Cancellation == 'C'] <- 'National Air System'
+cancel_reason$Reason_for_Cancellation[cancel_reason$Reason_for_Cancellation == 'D'] <- 'Security'
+
+fig <- plot_ly(cancel_reason, x = ~Reason_for_Cancellation, y = ~Count, type = 'bar')
+fig <- fig %>% layout(title = "Reasons for Calcellation of flights",
+         xaxis = list(title = "", tickangle = 45, size = 1),
+         yaxis = list(title = "Count"))
+
+fig
+
+
+```
+
+### **Inferences**
+
+* An National Air System (NAS) cancellations are due to non-weather related cancellations, heavy traffic volume, air traffice, etc. However, most cancellations are due to bad weather!
+
+* A huge imbalance in the dataset was observed with most flights not being delayed or cancelled.
+
+* We suggest avoiding flying on American Eagle Airlines to avoid a cancelled flight :) Hawaiian Airlines had the least cancellation rate in 2015!
+
+Row {data-height=350}
+-----------------------------------------------------------------------
+    
+### **What fraction of flights are on-time/cancelled/delayed?**
+```{r}
+total_flights_pie = 5819079
+cancelled_flights_pie = 89884
+delayed_flights_pie = 1063439
+on_time_flights_pie = 4665756
+
+name1 <- c('delayed_flights','on_time_flights', 'cancelled_flights')
+name2 = c(delayed_flights_pie,on_time_flights_pie, cancelled_flights_pie )
+
+split_data <- data.frame(name1,name2)
+colnames(split_data) <- c("Category", "Numbers")
+
+# write.csv(split_data, "split_data.csv")
+# del split_data
+
+# fig <- plot_ly( x = name1, y = name2, type = 'bar')
+# fig <- fig %>% layout(title = "Reasons for Calcellation of flights",
+#          xaxis = list(title = "", tickangle = 45, size = 1),
+#          yaxis = list(title = "Count"))
+
+
+fig <- plot_ly(split_data, labels = ~Category, values = ~Numbers, type ='pie', insidetextorientation='radial')%>% layout(showlegend = TRUE, legend = list(font = list(size = 12)))
+fig
+
+```
+
+
+    
+### **Which airlines cancel their flights the most?**
+
+```{r}
+airline_cancel <-data.frame(table(cancelled_flights$AIRLINE))
+colnames(airline_cancel) <- c("Airline", "Count")
+
+airline_cancel$cancel_rate <- (airline_cancel$Count/airline_share$Number_Of_Flights)*100
+
+fig <- plot_ly(airline_cancel, x = ~Airline, y = ~cancel_rate, type = 'bar')
+fig <- fig %>% layout(title = "Airline Cancellation Rates",
+         xaxis = list(title = "", tickangle = 45, size = 1),
+         yaxis = list(title = "Cancellation Rate (%)"))
+
+fig
+
+```
+
+
+
+
+
+Predicting Delayed Flights {orientation=rows}
+=====================================  
+
+
+**We are going to predict flight delays on this page! Click on the rocket button to get started. Make sure to click apply at the bottom of the table.**
+
+<br />
+
+Row {data-heght=650}
+--------------------------------------------------------------------
+
+```{r}
+h6("")
+dropdown(
+    style = "pill", 
+    size = "md",
+    tooltip = tooltipOptions(title = "Select One of Each"),
+    label = "Click me!",
+    icon = icon("rocket"),
+    status = "primary",
+    width = "100%",
+    animate = animateOptions(
+      enter = animations$fading_entrances$fadeInLeftBig,
+      exit = animations$fading_exits$fadeOutLeftBig),
+    
+       # Picker Input Widget: Experience
+    shinyWidgets::pickerInput(
+      inputId  = "picker_Airline",
+      label    = h5(strong("Airline")),
+      choices  = sort(unique(cancelled_flights$AIRLINE)),
+      selected = "American Airlines Inc.",
+      multiple = FALSE,
+      options = list(style = "btn-default btn-md")
+    ),
+    
+    hr(),
+    
+     # Picker Input Widget: Brand
+    shinyWidgets::pickerInput(
+      inputId  = "picker_month",
+      label    = h5(strong("Month")),
+      choices  = sort(unique(cancelled_flights$MONTH)),
+      selected = "1",
+      multiple = FALSE,
+      options = list(`style` = "btn-default btn-md")
+    ),
+    
+     hr(),
+    
+      shinyWidgets::pickerInput(
+      inputId  = "picker_day",
+      label    = h5(strong("Day")),
+      choices  = sort(unique(cancelled_flights$DAY)),
+      selected = "1",
+      multiple = FALSE,
+      options = list(`style` = "btn-default btn-md")
+    ),
+    
+     hr(),
+    # Picker Input Widget: Brand
+    shinyWidgets::pickerInput(
+      inputId  = "picker_model",
+      label    = h5(strong("Model")),
+      choices  = c("Logistic_Regression", "Decision_Tree"),
+      selected = "Logistic_Regression",
+      multiple = FALSE,
+      options = list(`style` = "btn-default btn-md")
+    ),
+    
+     hr(),
+    
+     br(),
+    
+    # Apply Button 
+    actionBttn(inputId = "apply",  
+               label   = "Apply",  
+               icon    = icon("play"), 
+               style  = "material-flat",
+               color = "primary",
+               block = TRUE))
+    
+    h6("")
+
+    
+    
+```
+
+
+Row {data-height=650}
+---------------------------------------------------------------------
+
+```{r}
+new_flight_tbl <- eventReactive(eventExpr = input$apply, valueExpr = {
+    generate_new_data(
+        Airline = input$picker_Airline,
+        Month = input$picker_month,
+        Day = input$picker_day,
+        Model = input$picker_model)
+  
+    
+})
+
+```
+
+
+
+```{r}
+# Render Table
+renderTable(hover = TRUE, spacing = "s",{
+    new_flight_tbl() %>% gather(key = "Model Attributes", value = "Value Chosen", factor_key = T) 
+}
+)
+```
+
+
+
+Row {data-height=350}
+---------------------------------------------------------------------
+### **Prediction Performance**
+
+_Model predictions results are displayed in this section_
+
+<br />
+
+We know you want to see the predictions! But, the length of the predictions are too long to print here (~3000 data points per query). 
+
+<br />
+
+**Instead, we print the mode of the predictions and classification accuracy(%) below! 1 denotes a flight delay and vice-versa.**
+
+<br />
+
+```{r}
+
+model_reg <- read_rds("log_reg_new.rds")
+model_dt <- read_rds("dt_model.rds")
+
+output$accuracy <- eventReactive(eventExpr = input$apply, valueExpr = {
+  if(input$picker_model == "Logistic_Regression"){
+
+    make_preds(train_data,model_reg,input$picker_Airline,
+               input$picker_month,input$picker_day,choice=1)
+  }
+  else{
+  
+    make_preds(train_data,model_dt,input$picker_Airline,
+               input$picker_month,input$picker_day,choice=2)
+  }
+  # model_user <- read_rds("log_reg.rds")
+})
+
+textOutput("accuracy")
+```
+
+
+
+
+About
+===================================== 
+
+<br />
+
+* **Introduction:** Welcome to the app! We chose to predict flight delays because we love everything planes. The data is from Kaggle and includes data about domestic US flight carriers for 2015. The dataset has about 6 million records and 30 features. Only 20% of the data was used to train/test the models due to constraints on computation. The prediction is made for the day and airline of the user's choice.
+
+* **Using the app**: The app broadly includes 3 sections or pages. The first 2 sections are interactive plots that answer interesting questions pertaining to flight delays and cancellations. The third section takes in a user input to make predictions if the flight is delayed or not. The user can choose the airline, month, day of the month and either Logistic Regression or Decision Tree as the Machine Learning model. Ensure the apply button is clicked after making your choice. After a few seconds, a table confirming your choice appears in the center of the page. You can see the accuracy and mode of the model's predictions to the right of the page. Finally, the app also handles errors if there are no flights by the selected airline on the chosen day.
+
+* **Models and Predictions**: The app features 2 trained models (Logistic Regression(LR) and Decision Tree(DT)). The models were trained locally and saved. The .rds file of the model is loaded at runtime to make predictions. The LR achieves an accuracy of 75% while the DT model achieves 90% on average. To reproduce the results, download the data and model files from the project submission Github repo to your current directory.
+
+* **Creators**: _Anusha Patel_ (https://github.com/apatel3112) & _Samarth Marudheri_ (https://github.com/Samarth2506) ; Feel free to get in touch if you have suggestions or questions on our project.
+
+* **Last Updated**: May 14th 2020
+
+* **References**:
+    * https://www.kaggle.com/usdot/flight-delays
+    * https://plotly.com/r/
+    * https://rmarkdown.rstudio.com/flexdashboard/using.html
+    * https://github.com/joon-im/specialized_price_prediction
+    * http://www.win-vector.com/blog/2014/05/trimming-the-fat-from-glm-models-in-r/
+    
+    

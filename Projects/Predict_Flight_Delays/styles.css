@@ -1,0 +1,70 @@
+body {
+  padding-top: 50px;
+  color: #000000;
+  background-color: #fff;
+}
+
+h1, h2, h3, h4, h5, .h1, .h2, .h3, .h4, .h5 {
+  color: #000000;
+}
+
+h6, .h6 {
+  color: #000000;
+}
+
+.section.sidebar {
+  top: 41px;
+  background-color: #000000;
+}
+
+/* NAVBAR */
+.navbar-inverse {
+  background-color: #000000;
+  border-color: #000000;
+}
+
+.navbar-inverse .navbar-brand {
+  color: #ffffff;
+}
+
+
+.navbar-logo {
+  width: 20px;
+}
+
+.value-box {
+  color: #000000;
+}
+
+.bg-primary {
+  background-color: #C0C0C0;
+}
+/* DROPDOWN */
+.sw-show.sw-dropdown-content {
+  display: block;
+  background-color: #121212; 
+}
+
+.sw-dropdown-in {
+  position: relative;
+  padding: 8px 10px;
+  margin: 8px 10px;
+  /* width: auto; */
+  background-color: #fff;
+  z-index: 100;
+}
+
+
+/* FEATURES BUTTON */
+.bttn-pill.bttn-primary {
+  background: #000000;
+  color: #fff;
+}
+
+.storyboard-nav .sbframelist ul li.active {
+  background-color: #000000;
+}
+
+.nav-tabs-custom > .nav-tabs > li.active {
+  border-top-color: #000000;
+}
